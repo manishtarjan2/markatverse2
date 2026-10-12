@@ -1,0 +1,147 @@
+{
+  "sellers": [
+    {
+      "name": "Sagar sports",
+      "type": "Construction Raw Material",
+      "location": "Bihar",
+      "phone": "0909090909",
+      "id": "S-8872",
+      "status": "Pending",
+      "date": "2026-08-31"
+    },
+    {
+      "name": "Sagar Sports",
+      "role": "Manufacturer",
+      "customer": "B2C",
+      "sector": "Construction & Building",
+      "category": "Raw Materials",
+      "service": "Cement",
+      "type": "Cement",
+      "location": "Bihar",
+      "phone": "9000000000",
+      "id": "S-8798",
+      "status": "Pending",
+      "date": "2026-09-01"
+    },
+    {
+      "name": "reg",
+      "role": "Service Provider",
+      "sector": "Construction",
+      "category": "Other",
+      "type": "Other",
+      "location": "rtg5",
+      "phone": "959696695066y906",
+      "id": "S-3425",
+      "status": "Pending",
+      "date": "2026-09-01"
+    },
+    {
+      "name": "Ssndeep",
+      "role": "Service Provider",
+      "sector": "Construction",
+      "category": "Other",
+      "type": "Other",
+      "location": "Bihar",
+      "phone": "9098090009",
+      "id": "S-6794",
+      "status": "Pending",
+      "date": "2026-09-01"
+    },
+    {
+      "name": "hy",
+      "role": "Service Provider",
+      "sector": "Fashion",
+      "category": "Other",
+      "type": "Other",
+      "location": "u",
+      "phone": "8898989999",
+      "id": "S-8599",
+      "status": "Pending",
+      "date": "2026-09-01"
+    },
+    {
+      "name": "hjh",
+      "role": "Manufacturer",
+      "sector": "Electronics",
+      "category": "Mobiles",
+      "type": "Mobiles",
+      "location": "hh",
+      "phone": "888989989898",
+      "id": "S-7289",
+      "status": "Pending",
+      "date": "2026-09-01"
+    },
+    {
+      "name": "jkbhbj",
+      "role": "Organizer",
+      "sector": "Construction",
+      "category": "Other",
+      "type": "Other",
+      "location": "yvjyj",
+      "phone": "89y8889900",
+      "id": "S-6951",
+      "status": "Pending",
+      "date": "2026-09-01"
+    },
+    {
+      "name": "yugh",
+      "role": "Manufacturer",
+      "sector": "Construction",
+      "category": "Plumbing",
+      "type": "Plumbing",
+      "location": "hjbhbj",
+      "phone": "9898989898",
+      "id": "S-6683",
+      "status": "Pending",
+      "date": "2026-09-01"
+    },
+    {
+      "name": "878998",
+      "role": "Organizer",
+      "sector": "Transport & Logistics",
+      "category": "Heavy Freight",
+      "type": "Heavy Freight",
+      "location": "777",
+      "phone": "988898899889",
+      "id": "S-4010",
+      "status": "Pending",
+      "date": "2026-09-01"
+    },
+    {
+      "name": "tyyt",
+      "role": "Retailer",
+      "sector": "Fashion",
+      "category": "Men's Wear",
+      "type": "Men's Wear",
+      "location": "hjhj",
+      "phone": "3434343434343",
+      "id": "S-4021",
+      "status": "Pending",
+      "date": "2026-09-01"
+    },
+    {
+      "name": "ghj",
+      "role": "Wholesaler",
+      "sector": "Electronics",
+      "category": "Accessories",
+      "type": "Accessories",
+      "location": "hjb",
+      "phone": "8989899898",
+      "id": "S-9935",
+      "status": "Pending",
+      "date": "2026-09-02"
+    },
+    {
+      "name": "sdcsfdr",
+      "role": "Manufacturer",
+      "sector": "Construction",
+      "category": "Plumbing",
+      "type": "Plumbing",
+      "location": "sdsas",
+      "phone": "898989989898",
+      "id": "S-5380",
+      "status": "Pending",
+      "date": "2026-09-02"
+    }
+  ]
+}

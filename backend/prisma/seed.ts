@@ -1,0 +1,66 @@
+import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const prisma = new PrismaClient();
+
+import * as crypto from 'crypto';
+
+function generateObjectId(str: string): string {
+  return crypto.createHash('md5').update(str).digest('hex').substring(0, 24);
+}
+
+async function main() {
+  const dataPath = path.join(process.cwd(), 'data.json');
+  const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+
+  for (const item of data) {
+    const validId = generateObjectId(item.id);
+    await prisma.product.upsert({
+      where: { id: validId },
+      update: {
+        name: item.name,
+        price: parseFloat(item.price),
+        originalPrice: item.originalPrice ? parseFloat(item.originalPrice) : null,
+        discount: item.discount,
+        rating: String(item.rating),
+        reviews: item.reviews,
+        sellerName: item.seller,
+        location: item.location ? (item.location.includes('Mumbai') ? item.location + ' 400001' : item.location.includes('Delhi') ? item.location + ' 110001' : item.location) : null,
+        categoryName: item.category,
+        badge: item.badge,
+        badgeColor: item.badgeColor,
+        image: item.image,
+        isB2B: item.category === 'B2B' || item.category === 'Wholesale',
+        moq: (item.category === 'B2B' || item.category === 'Wholesale') ? 50 : 1
+      },
+      create: {
+        id: validId,
+        name: item.name,
+        price: parseFloat(item.price),
+        originalPrice: item.originalPrice ? parseFloat(item.originalPrice) : null,
+        discount: item.discount,
+        rating: String(item.rating),
+        reviews: item.reviews,
+        sellerName: item.seller,
+        location: item.location ? (item.location.includes('Mumbai') ? item.location + ' 400001' : item.location.includes('Delhi') ? item.location + ' 110001' : item.location) : null,
+        categoryName: item.category,
+        badge: item.badge,
+        badgeColor: item.badgeColor,
+        image: item.image,
+        isB2B: item.category === 'B2B' || item.category === 'Wholesale',
+        moq: (item.category === 'B2B' || item.category === 'Wholesale') ? 50 : 1
+      }
+    });
+  }
+  console.log('Seeded database successfully!');
+}
+
+main()
+  .catch(e => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

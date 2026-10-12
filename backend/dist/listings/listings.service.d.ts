@@ -1,0 +1,181 @@
+import { PrismaService } from '../prisma.service.js';
+export declare class ListingsService {
+    private prisma;
+    constructor(prisma: PrismaService);
+    getAllListings(filters: {
+        sectorId?: string;
+        businessTypeId?: string;
+        status?: string;
+    }): Promise<({
+        category: {
+            workflow: string | null;
+            id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            parameters: import("@prisma/client/runtime/library").JsonValue | null;
+            theme: string | null;
+            icon: string | null;
+            primaryType: string | null;
+            allowedListingTypes: string[];
+            businessModels: string[];
+            workflowId: string | null;
+            allowedFeatures: string[];
+            notApplicable: string[];
+            optionalFeatures: string[];
+            subcategories: import("@prisma/client/runtime/library").JsonValue | null;
+            defaultCommissionRate: number | null;
+            defaultFlatRate: number | null;
+            parentId: string | null;
+            sectorId: string | null;
+        } | null;
+        businessType: {
+            id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            description: string | null;
+            mainType: import(".prisma/client").$Enums.MainType;
+            isActive: boolean;
+        };
+        sector: {
+            id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            description: string | null;
+            parameters: import("@prisma/client/runtime/library").JsonValue | null;
+            isActive: boolean;
+            businessTypeId: string;
+        };
+        seller: {
+            id: string;
+            name: string;
+        };
+    } & {
+        id: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sellerId: string;
+        description: string | null;
+        title: string;
+        categoryId: string | null;
+        businessTypeId: string;
+        sectorId: string;
+        attributes: import("@prisma/client/runtime/library").JsonValue | null;
+        pricingConfig: import("@prisma/client/runtime/library").JsonValue | null;
+        availability: import("@prisma/client/runtime/library").JsonValue | null;
+        media: string[];
+    })[]>;
+    getListingById(id: string): Promise<{
+        category: {
+            workflow: string | null;
+            id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            parameters: import("@prisma/client/runtime/library").JsonValue | null;
+            theme: string | null;
+            icon: string | null;
+            primaryType: string | null;
+            allowedListingTypes: string[];
+            businessModels: string[];
+            workflowId: string | null;
+            allowedFeatures: string[];
+            notApplicable: string[];
+            optionalFeatures: string[];
+            subcategories: import("@prisma/client/runtime/library").JsonValue | null;
+            defaultCommissionRate: number | null;
+            defaultFlatRate: number | null;
+            parentId: string | null;
+            sectorId: string | null;
+        } | null;
+        businessType: {
+            id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            description: string | null;
+            mainType: import(".prisma/client").$Enums.MainType;
+            isActive: boolean;
+        };
+        sector: {
+            id: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            description: string | null;
+            parameters: import("@prisma/client/runtime/library").JsonValue | null;
+            isActive: boolean;
+            businessTypeId: string;
+        };
+        seller: {
+            id: string;
+            name: string;
+        };
+    } & {
+        id: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sellerId: string;
+        description: string | null;
+        title: string;
+        categoryId: string | null;
+        businessTypeId: string;
+        sectorId: string;
+        attributes: import("@prisma/client/runtime/library").JsonValue | null;
+        pricingConfig: import("@prisma/client/runtime/library").JsonValue | null;
+        availability: import("@prisma/client/runtime/library").JsonValue | null;
+        media: string[];
+    }>;
+    createListing(data: any): Promise<{
+        id: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sellerId: string;
+        description: string | null;
+        title: string;
+        categoryId: string | null;
+        businessTypeId: string;
+        sectorId: string;
+        attributes: import("@prisma/client/runtime/library").JsonValue | null;
+        pricingConfig: import("@prisma/client/runtime/library").JsonValue | null;
+        availability: import("@prisma/client/runtime/library").JsonValue | null;
+        media: string[];
+    }>;
+    updateListing(id: string, data: any): Promise<{
+        id: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sellerId: string;
+        description: string | null;
+        title: string;
+        categoryId: string | null;
+        businessTypeId: string;
+        sectorId: string;
+        attributes: import("@prisma/client/runtime/library").JsonValue | null;
+        pricingConfig: import("@prisma/client/runtime/library").JsonValue | null;
+        availability: import("@prisma/client/runtime/library").JsonValue | null;
+        media: string[];
+    }>;
+    deleteListing(id: string): Promise<{
+        id: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sellerId: string;
+        description: string | null;
+        title: string;
+        categoryId: string | null;
+        businessTypeId: string;
+        sectorId: string;
+        attributes: import("@prisma/client/runtime/library").JsonValue | null;
+        pricingConfig: import("@prisma/client/runtime/library").JsonValue | null;
+        availability: import("@prisma/client/runtime/library").JsonValue | null;
+        media: string[];
+    }>;
+}

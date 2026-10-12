@@ -1,0 +1,139 @@
+"use client";
+import React, { useEffect, useState } from 'react';
+import { Star } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+
+const getApiUrl = () => { if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL; if (typeof window !== 'undefined') { return 'http://' + window.location.hostname + ':3001'; } return 'http://localhost:3001'; }; const API_URL = getApiUrl();
+
+export default function Recommendations() {
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        setLoading(true);
+        const url = user?.id
+          ? `${API_URL}/recommendations?userId=${user.id}`
+          : `${API_URL}/recommendations`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          setRecommendations(data);
+        }
+      } catch (e) {
+        console.error('Failed to fetch recommendations:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecommendations();
+  }, [user?.id]);
+
+  const handleClick = async (item: any) => {
+    // Log interaction
+    try {
+      await fetch(`${API_URL}/recommendations/interactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id || null,
+          productId: item.itemType === 'product' ? item.id : undefined,
+          serviceId: item.itemType === 'service' ? item.id : undefined,
+          type: 'CLICK'
+        })
+      });
+    } catch (e) {
+      console.error('Failed to log interaction', e);
+    }
+    // Navigate to product or service page
+    if (item.itemType === 'product') {
+      router.push(`/product/${item.id}`);
+    } else {
+      router.push(`/service/${item.id}`);
+    }
+  };
+
+  const handleMouseEnter = (item: any) => {
+    fetch(`${API_URL}/recommendations/interactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user?.id || null,
+        productId: item.itemType === 'product' ? item.id : undefined,
+        serviceId: item.itemType === 'service' ? item.id : undefined,
+        type: 'VIEW'
+      })
+    }).catch(() => {});
+  };
+
+  if (loading) {
+    return (
+      <section className="mt-4">
+        <div className="flex justify-between items-end border-b border-slate-200 pb-3 mb-4">
+          <h2 className="text-xl lg:text-2xl font-bold text-slate-900">Recommended For You</h2>
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="w-[145px] sm:w-[170px] shrink-0 bg-slate-200 rounded-xl h-32 animate-pulse snap-start" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (recommendations.length === 0) return null;
+
+  // Only show items that have a real image
+  const realItems = recommendations.filter((item) => item.images?.[0]);
+
+  if (realItems.length === 0) return null;
+
+  return (
+    <section className="mt-4">
+      <div className="flex justify-between items-end border-b border-slate-200 pb-3 mb-4">
+        <div className="flex items-center gap-2">
+          <Star className="text-indigo-500 w-4 h-4" />
+          <h2 className="text-xl lg:text-2xl font-bold text-slate-900">Recommended For You</h2>
+        </div>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory">
+        {realItems.map((item) => (
+          <div
+            key={item.id}
+            className="w-[145px] sm:w-[170px] shrink-0 snap-start bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-md hover:border-indigo-300 transition-all group cursor-pointer"
+            onMouseEnter={() => handleMouseEnter(item)}
+            onClick={() => handleClick(item)}
+          >
+            <div className="h-24 sm:h-28 bg-slate-100 relative overflow-hidden">
+              <img
+                src={item.images[0]}
+                alt={item.name || item.title}
+                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute top-2 left-2 bg-indigo-600 text-white text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded">
+                {item.itemType}
+              </div>
+            </div>
+
+            <div className="p-2.5">
+              <h3 className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition-colors mb-0.5">
+                {item.name || item.title}
+              </h3>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-sm font-black text-slate-900">₹{item.price}</span>
+                <span className="text-[9px] text-slate-400 font-medium">
+                  {item.seller?.name || item.seller?.storeName || ''}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}

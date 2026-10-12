@@ -1,0 +1,820 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  markatId  String?  @unique
+  email     String?  @unique
+  phone     String?  @unique
+  password  String
+  name      String
+  role      String   @default("CONSUMER") // CONSUMER, SELLER, ADMIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business    Business?
+  products    Product[]
+  buyerLeads  Lead[]    @relation("BuyerLeads")
+  sellerLeads Lead[]    @relation("SellerLeads")
+  serviceQueues ServiceQueue[]
+  resetCode     String?
+  resetCodeExpires DateTime?
+
+  // V2 Relations
+  listings    Listing[] @relation("UserListings")
+  addresses   ShippingAddress[]
+}
+
+model Business {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  businessCode String? @unique
+  userId       String  @unique @db.ObjectId
+  name         String
+  logo         String?
+  description  String?
+  businessModel MainType @default(B2C)
+  businessType String // MANUFACTURER, WHOLESALER, etc
+  sector       String?
+  address      String?
+  pincode      String?
+  latitude     Float?
+  longitude    Float?
+  gstNumber    String?
+  businessHours Json?
+  verified     Boolean  @default(false)
+  verificationStatus String @default("PENDING") // PENDING, ACTION_REQUIRED, AUTO_VERIFIED, ADMIN_REVIEW_REQUIRED
+  verificationLevel  Int    @default(0) // 0=None, 1=Basic, 2=Manual
+  verificationNotes  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  capabilities String[] @default([]) // B2B, B2C, SERVICE, CONTRACTOR, etc.
+  maxListings  Int      @default(5)
+  commissionType String @default("PERCENTAGE") // PERCENTAGE or FIXED
+  commissionRate Float  @default(5.0)
+
+  // Subscription Fields
+  subscriptionStatus    String    @default("ACTIVE") // ACTIVE, EXPIRED
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+
+  user       User               @relation(fields: [userId], references: [id])
+  wallet     Wallet?
+  features   BusinessFeature[]
+  bankAccounts BankAccount[]
+  branches   Branch[]
+
+  @@index([businessModel])
+  @@index([businessType])
+  @@index([sector])
+  @@index([verified])
+  @@index([latitude, longitude])
+}
+
+model Branch {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  businessId   String   @db.ObjectId
+  name         String
+  status       String   @default("Active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business     Business @relation(fields: [businessId], references: [id])
+}
+
+model Category {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  theme     String?    @default("slate")
+  icon      String?    @default("Box")
+  primaryType String?  @default("PRODUCT")
+  
+  // Relationship Manager settings (stored as arrays of strings in JSON)
+  allowedListingTypes String[] @default([])
+  businessModels      String[] @default([])
+  workflow            String?
+  workflowId          String?  @db.ObjectId
+  workflowRef         Workflow? @relation(fields: [workflowId], references: [id])
+  allowedFeatures     String[] @default([])
+  notApplicable       String[] @default([])
+  optionalFeatures    String[] @default([])
+  
+  parameters Json?
+  subcategories Json?
+
+  defaultCommissionRate Float? @default(5.0)
+  defaultFlatRate       Float? @default(999.0)
+
+  parentId  String?    @db.ObjectId
+  parent    Category?  @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children  Category[] @relation("CategoryToCategory")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  products Product[]
+  
+  // V2 Relations
+  sectorId String?   @db.ObjectId
+  sector   Sector?   @relation("SectorToCategory", fields: [sectorId], references: [id])
+  listings Listing[] @relation("CategoryToListing")
+
+  @@index([primaryType])
+  @@index([parentId])
+  @@index([sectorId])
+}
+
+model Product {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId      String?  @db.ObjectId
+  categoryId    String?  @db.ObjectId
+
+  // Frontend fields
+  name          String
+  description   String?
+  price         Float
+  originalPrice Float?
+  discount      String?
+  rating        String?  @default("0.0")
+  reviews       String?  @default("0")
+  sellerName    String?
+  location      String?
+  pincode       String?
+  latitude      Float?
+  longitude     Float?
+  categoryName  String?
+  type          String   @default("PRODUCT")
+  subcategory   String?
+  parameters    Json?
+  options       Json?
+  badge         String?
+  badgeColor    String?
+  image         String?
+  images        String[] @default([])
+
+  stock         Int      @default(0)
+  sku           String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  isB2B         Boolean  @default(false)
+  moq           Int?     @default(1)
+  status        String   @default("ACTIVE") // ACTIVE, SUSPENDED
+
+  seller     User?       @relation(fields: [sellerId], references: [id])
+  category   Category?   @relation(fields: [categoryId], references: [id])
+  leads      Lead[]
+
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([type])
+  @@index([latitude, longitude])
+  @@index([isB2B])
+  @@index([categoryName])
+}
+
+model Lead {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  buyerId           String   @db.ObjectId
+  sellerId          String   @db.ObjectId
+  productId         String   @db.ObjectId
+  message           String
+  quantityRequested Int
+  status            String   @default("PENDING") // PENDING, REPLIED, CLOSED
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  buyer   User    @relation("BuyerLeads", fields: [buyerId], references: [id])
+  seller  User    @relation("SellerLeads", fields: [sellerId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber String?     @unique
+  buyerId     String?     // Removed @db.ObjectId to allow "guest" or any string, or just make optional
+  total     Float
+  status    String      @default("PENDING") // PENDING, SHIPPED, etc
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId     String   @db.ObjectId
+  productId   String   
+  productName String?
+  sellerId    String?
+  quantity    Int
+  price       Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id])
+}
+
+model ServiceQueue {
+  id                 String       @id @default(auto()) @map("_id") @db.ObjectId
+  shopName           String
+  location           String?
+  pincode            String?
+  latitude           Float?
+  longitude          Float?
+  sellerId           String?      @db.ObjectId
+  currentToken       Int          @default(0)
+  lastToken          Int          @default(0)
+  avgMinutes         Int          @default(20)
+  pricePerHour       Float        @default(0)
+  isOpen             Boolean      @default(true)
+  
+  // Universal Engine Settings
+  enableTokens       Boolean      @default(true)
+  enableAppointments Boolean      @default(false)
+  queuePolicy        String       @default("FIFO") // FIFO, APPOINTMENT_PRIORITY, MIXED
+  status             String       @default("ACTIVE") // ACTIVE, SUSPENDED
+  
+  rating             String?      @default("0.0")
+  reviews            String?      @default("0")
+  
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  bookings           ServiceBooking[]
+  staff              ServiceStaff[]
+  resources          ServiceResource[]
+  seller             User?        @relation(fields: [sellerId], references: [id])
+}
+
+model ServiceBooking {
+  id               String       @id @default(auto()) @map("_id") @db.ObjectId
+  bookingNumber    String?      @unique
+  queueId          String       @db.ObjectId
+  
+  // Unified Booking Identity
+  bookingMode      String       @default("TOKEN") // TOKEN, APPOINTMENT
+  tokenNumber      Int?
+  appointmentTime  DateTime?
+  
+  customerName     String
+  phone            String?
+  service          String       @default("General")
+  price            Float        @default(0)
+  staffName        String?
+  
+  // Status tracking
+  status           String       @default("WAITING") // PENDING, CHECKED_IN, WAITING, SERVING, DONE, NO_SHOW
+  
+  // Assignment
+  staffId          String?      @db.ObjectId
+  resourceId       String?      @db.ObjectId
+
+  joinedAt         DateTime     @default(now())
+  servedAt         DateTime?
+  doneAt           DateTime?
+
+  queue            ServiceQueue     @relation(fields: [queueId], references: [id])
+  staff            ServiceStaff?    @relation(fields: [staffId], references: [id])
+  resource         ServiceResource? @relation(fields: [resourceId], references: [id])
+}
+
+model ServiceStaff {
+  id               String       @id @default(auto()) @map("_id") @db.ObjectId
+  staffCode        String?      @unique
+  queueId          String       @db.ObjectId
+  name             String
+  imageUrl         String?
+  role             String?
+  specialization   String?
+  services         String[]     @default([])
+  workingHours     Json?
+  status           String       @default("AVAILABLE") // AVAILABLE, IN_SERVICE, BREAK, INACTIVE
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  queue            ServiceQueue @relation(fields: [queueId], references: [id])
+  bookings         ServiceBooking[]
+  resources        ServiceResource[]
+}
+
+model ServiceResource {
+  id               String       @id @default(auto()) @map("_id") @db.ObjectId
+  queueId          String       @db.ObjectId
+  name             String       // e.g. "Chair 1", "Room 4"
+  type             String       // e.g. "Chair", "Room"
+  capacity         Int          @default(1)
+  services         String[]     @default([])
+  status           String       @default("AVAILABLE") // AVAILABLE, IN_USE, MAINTENANCE
+  assignedStaffId  String?      @db.ObjectId
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  queue            ServiceQueue  @relation(fields: [queueId], references: [id])
+  assignedStaff    ServiceStaff? @relation(fields: [assignedStaffId], references: [id])
+  bookings         ServiceBooking[]
+}
+
+// ---------------------------------------------------------
+// V2 CONFIGURATION-DRIVEN ARCHITECTURE MODELS
+// ---------------------------------------------------------
+
+enum MainType {
+  B2B
+  B2C
+  BOTH
+  SERVICE
+}
+
+model BusinessType {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  mainType    MainType
+  name        String    // e.g. Manufacturer, Wholesaler, Shop, Professional
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sectors     Sector[]
+  listings    Listing[]
+}
+
+model Sector {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  businessTypeId String       @db.ObjectId
+  name           String       // e.g. Electronics, Salon, Healthcare
+  description    String?
+  parameters     Json?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  businessType   BusinessType @relation(fields: [businessTypeId], references: [id])
+  categories     Category[]   @relation("SectorToCategory")
+  listings       Listing[]
+}
+
+// Update to existing Category to support new Sector mapping
+// We will add sectorId to Category without breaking existing relations.
+// Wait, Prisma doesn't allow extending an existing model from another block.
+// I will just add the fields directly to Category above using multi_replace_file_content later if needed.
+// Actually, let's create a new V2Category for clean separation or just modify Category above.
+// Since I'm appending here, I will just append the new models first.
+
+model Configuration {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  type      String   // e.g. PRICING, AVAILABILITY, WORKFLOW
+  data      Json     // The flexible config payload
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Workflow {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   // e.g. B2B_RFQ, SALON_BOOKING
+  description String?
+  version     Int      @default(1)
+  steps       Json     // Array of workflow steps and rules
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  categories  Category[]
+}
+
+model Interface {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   // e.g. Salon Profile, Doctor Profile
+  components  Json     // UI layout definitions and enabled features
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Listing {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId       String   @db.ObjectId
+  businessTypeId String   @db.ObjectId
+  sectorId       String   @db.ObjectId
+  categoryId     String?  @db.ObjectId
+
+  title          String
+  description    String?
+  status         String   @default("ACTIVE") // ACTIVE, PAUSED, DRAFT
+
+  attributes     Json?    // Flexible attributes instead of hardcoded columns
+  pricingConfig  Json?    // B2B tiers, B2C prices, Service prices
+  availability   Json?    // Stock for products, schedule for services
+  media          String[] @default([])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  seller         User         @relation("UserListings", fields: [sellerId], references: [id])
+  businessType   BusinessType @relation(fields: [businessTypeId], references: [id])
+  sector         Sector       @relation(fields: [sectorId], references: [id])
+  category       Category?    @relation("CategoryToListing", fields: [categoryId], references: [id])
+}
+
+// ---------------------------------------------------------
+// SELLER WALLET & SETTLEMENT SYSTEM
+// ---------------------------------------------------------
+
+model Wallet {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  businessId      String   @unique @db.ObjectId
+  totalEarnings   Float    @default(0)
+  pendingBalance  Float    @default(0)
+  availableBalance Float   @default(0)
+  withdrawn       Float    @default(0)
+  owedToPlatform  Float    @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business @relation(fields: [businessId], references: [id])
+  transactions    LedgerTransaction[]
+  withdrawals     WithdrawalRequest[]
+}
+
+model LedgerTransaction {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  walletId        String   @db.ObjectId
+  referenceId     String?  // Order ID, Booking ID, etc.
+  referenceType   String?  // ORDER, BOOKING, PROJECT
+  paymentRef      String?  // Gateway transaction ID
+  
+  grossAmount     Float
+  platformFee     Float    @default(0)
+  commission      Float    @default(0)
+  tax             Float    @default(0)
+  netAmount       Float
+  
+  type            String   // CREDIT, DEBIT, SETTLEMENT, REFUND, ADJUSTMENT
+  status          String   @default("PENDING") // PENDING, SETTLED, AVAILABLE, FAILED, REFUNDED
+  
+  createdAt       DateTime @default(now())
+  settledAt       DateTime?
+
+  wallet          Wallet   @relation(fields: [walletId], references: [id])
+}
+
+model BankAccount {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  businessId      String   @db.ObjectId
+  accountName     String
+  accountNumber   String
+  ifscCode        String?
+  bankName        String
+  isPrimary       Boolean  @default(false)
+  isVerified      Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business @relation(fields: [businessId], references: [id])
+  withdrawals     WithdrawalRequest[]
+}
+
+model WithdrawalRequest {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  walletId        String   @db.ObjectId
+  bankAccountId   String   @db.ObjectId
+  amount          Float
+  fee             Float    @default(0)
+  netAmount       Float
+  status          String   @default("REQUESTED") // REQUESTED, PROCESSING, COMPLETED, FAILED
+  referenceNumber String?  // Bank reference
+  
+  createdAt       DateTime @default(now())
+  processedAt     DateTime?
+
+  wallet          Wallet      @relation(fields: [walletId], references: [id])
+  bankAccount     BankAccount @relation(fields: [bankAccountId], references: [id])
+}
+
+// ---------------------------------------------------------
+// CAPABILITY & FEATURE SYSTEM
+// ---------------------------------------------------------
+
+model FeatureRegistry {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  key             String   @unique // e.g. PRODUCT_SALES, SERVICE_BOOKING, TOKEN_QUEUE
+  name            String
+  description     String?
+  requires        String[] @default([]) // Array of feature keys required for this to be active
+  category        String   // CORE, ADDON
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  businesses      BusinessFeature[]
+}
+
+model BusinessFeature {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  businessId      String   @db.ObjectId
+  featureKey      String   // Links to FeatureRegistry.key
+  isActive        Boolean  @default(true)
+  settings        Json?    // Optional feature-specific configuration
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business        @relation(fields: [businessId], references: [id])
+  feature         FeatureRegistry @relation(fields: [featureKey], references: [key])
+
+  @@unique([businessId, featureKey])
+}
+
+model SystemConfig {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique // e.g. HEXAGONAL_RADIUS
+  value       String   // e.g. "5"
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model Counter {
+  id  String @id @map("_id") // "User", "Business", "Order", "Booking", "Staff"
+  seq Int    @default(0)
+}
+
+model Review {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  rating      Int
+  comment     String?
+  entityId    String   @db.ObjectId
+  entityType  String
+  userId      String   @db.ObjectId
+  userName    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CmsPage {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  slug      String   @unique
+  content   String
+  status    String   @default("DRAFT") // DRAFT, PUBLISHED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Banner {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  imageUrl  String
+  linkUrl   String?
+  position  String   @default("HOMEPAGE")
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BlogPost {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  slug          String   @unique
+  content       String
+  author        String?
+  featuredImage String?
+  tags          String[] @default([])
+  status        String   @default("DRAFT") // DRAFT, PUBLISHED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SeoMetadata {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  pageUrl     String   @unique
+  title       String
+  description String
+  keywords    String?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// COMMERCIAL MODULE
+// ---------------------------------------------------------
+
+model Advertisement {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  mediaUrl  String?
+  linkUrl   String?
+  position  String   @default("HOMEPAGE")
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Coupon {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  code        String   @unique
+  discount    Float
+  type        String   @default("PERCENTAGE") // PERCENTAGE, FIXED
+  validUntil  DateTime?
+  status      String   @default("ACTIVE") // ACTIVE, EXPIRED, DISABLED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Subscription {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  planName    String
+  price       Float
+  features    String[] @default([])
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Commission {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  type        String   // SELLER, CATEGORY, CUSTOM
+  rate        Float
+  conditions  String?
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// SUPPORT MODULE
+// ---------------------------------------------------------
+
+model Complaint {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE, RESOLVED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// SECURITY MODULE
+// ---------------------------------------------------------
+
+model AuditLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  logId       String?
+  action      String   // e.g., "SELLER_SUSPENDED", "PRODUCT_APPROVED", "SYSTEM_EVENT"
+  resource    String?
+  entityType  String?  // e.g., "User", "Product", "Business"
+  entityId    String?
+  details     String?
+  detailsJson Json?    // Detailed log of what changed
+  userId      String?  @db.ObjectId // User ID who performed the action, or "SYSTEM"
+  actorRole   String?  // e.g., "ADMIN", "SYSTEM", "SELLER"
+  ipAddress   String?
+  status      String   @default("SUCCESS") // SUCCESS, FAILED
+  createdAt   DateTime @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+}
+
+// ---------------------------------------------------------
+// RECOMMENDATIONS MODULE
+// ---------------------------------------------------------
+
+model UserInteraction {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
+  productId String?  @db.ObjectId
+  serviceId String?  @db.ObjectId
+  type      String   // "VIEW" or "CLICK"
+  weight    Int      @default(1)
+  createdAt DateTime @default(now())
+}
+
+model SmsTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  message   String
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  message   String
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PushTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  message   String
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ------------------------------------------------------
+// AUTOMATION & SCALABILITY (Phase 1)
+// ------------------------------------------------------
+
+model AutomationException {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  type         String   // e.g., "VERIFICATION_FAILED", "MISSING_DOCUMENTS", "FRAUD_FLAG"
+  severity     String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  referenceId  String?  // ID of the entity causing exception
+  referenceType String? // e.g., "User", "Order", "Business"
+  message      String
+  details      Json?
+  status       String   @default("PENDING") // PENDING, INVESTIGATING, RESOLVED
+  assignedTo   String?  // Admin User ID handling this
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([severity])
+}
+
+
+model CommissionRule {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  entityType  String   // e.g. 'CATEGORY', 'SELLER_TYPE'
+  entityId    String   // e.g. category name or seller mainType
+  percentage  Float    // e.g. 5.0 for 5%
+  fixedFee    Float    @default(0.0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Dispute {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TaxRule {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  rate      Float    @default(0)
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SecurityAlert {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NotificationLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String?  @db.ObjectId
+  userType    String?  // CUSTOMER, SELLER
+  channel     String   // PUSH, SMS, EMAIL
+  triggerType String   // ORDER_PROCESSING, SELLER_WELCOME, etc.
+  recipient   String   // phone, email, device token
+  title       String?
+  message     String
+  status      String   @default("SENT") // SENT, FAILED
+  createdAt   DateTime @default(now())
+}
+
+model ShippingAddress {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  label     String   @default("Home") // Home, Office, etc.
+  isDefault Boolean  @default(false)
+  name      String
+  street    String
+  city      String
+  state     String
+  pinCode   String
+  country   String   @default("India")
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
